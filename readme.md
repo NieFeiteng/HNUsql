@@ -1,50 +1,31 @@
 ﻿# HUNsql
 
-0. 准备测试数据（包括正常查询数据与异常查询数据以及大量数据）&自己写的代码的报告可以写起来了
-1. 更改输出格式，以及提供输出信息，如查询花费多少时间、查到了多少条结果、以及反馈情况
-2. API中全部把异常抛出留给解释器，异常只在解释器中输出
-3. Delete中的输出信息
-4. RecordManager删除记录时索引的问题
-5. 查询时''的类型判断
-6. API提供检查的接口来检查数据类型、表是否存在、属性是否存在
-7. 内部增加DEBUG命令来方便调试检测
+
+
+运行：
+
+​	CLient目录先TCP Client.java 为客户端主程序
+
+​	src目录下Interpreter.java为服务器主程序
+
+​	只能在客户端进行操作
+
+1. 准备测试数据（包括正常查询数据与异常查询数据以及大量数据）&自己写的代码的报告可以写起来了
+2. 更改输出格式，以及提供输出信息，如查询花费多少时间、查到了多少条结果、以及反馈情况
+3. API中全部把异常抛出留给解释器，异常只在解释器中输出
+4. Delete中的输出信息
+5. RecordManager删除记录时索引的问题
+6. 查询时''的类型判断
+7. API提供检查的接口来检查数据类型、表是否存在、属性是否存在
+8. 内部增加DEBUG命令来方便调试检测
 
 ### Update Info 更新信息
 
 | Date       | User | Info                             |
-| ---------- | ---- | -------------------------------- |
-| 2019-05-18 | ycj  | 新建项目框架，约定命名、注释规范 |
-| 2019-05-30 | ycj  | Buffer&BufferManager实现|
-| 2019-06-01 | yrj  | Address&FieldType&TableRow&Condition类实现|
-| 2019-06-01 | ycj  | BufferManager类增加了make_invalid接口，修改了read_block_from_disk函数 |
-| 2019-06-03 | stl  | CatalogManager&Attribute&Index&Table实现&Main test函数&Condition修改 |
-| 2019-06-04 | yrj  | Condition&TableRow类修改，RecordManager实现，TestRecord测试程序上传 |
-| 2019-06-05 | zjs  | B+树类BPTree实现 |
-| 2019-06-06 | stl  | 修复enum语法错误，将部分print改为throw |
-| 2019-06-06 | ycj  | 修改BufferManager中方法为static |
-| 2019-06-06 | ycj  | 增加interpreter & API 文件 |
-| 2019-06-06 | ycj  | 修改整体架构 |
-| 2019-06-07 | zjs  | BPTree修改：增加不等值查找 |
-| 2019-06-07 | zjs stl  | 增加IndexManager，修复BPTree |
-| 2019-06-07 | yrj  | 修改RecordManager，增加地址操作的条件参数 |
-| 2019-06-08 | ycj  | 修改BufferManager，初始化使用静态函数而不是使用构造函数 |
-| 2019-06-08 | stl  | 修复API中table、index创建和删除的bug |
-| 2019-06-08 | yrj  | 修改RecordManager和Condition，修正了CHAR类的读写方式 |
-| 2019-06-08 | stl  | 完成API中的select函数 |
-| 2019-06-09 | zjs  | 修改API中的select函数 |
-| 2019-06-09 | zjs  | 修改API中的delete_row函数 |
-| 2019-06-09 | stl  | 修改API中的drop_index参数为indexName |
-| 2019-06-09 | ycj yrj | Interpreter模块实现 |
-| 2019-06-10 | yrj  | 修改RecordManager中delete函数，删除对应索引 |
-| 2019-06-10 | ycj  | 优化查询输出，增加QException类 |
-| 2019-06-10 | yrj  | Interpreter模块增加异常处理 |
-| 2019-06-11 | zjs  | Interpreter模块增加insert时的unique key重复判断 |
-| 2019-06-11 | zjs  | Interpreter模块增加create_index时的unique key判断 |
-| 2019-06-11 | stl  | 修改show_tables和show_indexes的输出 |
-| 2018-06-11 | yrj  | Interpreter模块异常处理优化，增加计时处理 |
-| 2019-06-12 | zjs  | Interpreter少量bug优化 |
-| 2019-06-12 | ycj  | 优化delete/select的输出 |
-| 2019-06-12 | zjs  | Interpreter优化输出，API修复bug，更改create_table异常抛出 |
+| ---------- | ---- | :------------------------------- |
+| 2020-7-12 | 聂飞腾 | 实现客户端 |
+|           |        |            |
+|           |        |            |
 
 ------------------------------
 
