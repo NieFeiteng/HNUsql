@@ -7,10 +7,12 @@ public class QException extends Exception {
     public String msg; //exception message
     public static final String[] ex = {"Syntax error ", "Run time error "};
 
-    QException(int type, int status, String msg) {
+    QException(int type, int status, String msg)  {
         this.type = (type >= 0 && type <= ex.length) ? type : 0;
         this.status = status;
         this.msg = msg;
+        //String str = String.valueOf(type) + String.valueOf(status)+msg;
+     //   Connect.out_to_client(str);
     }
 
     @Override

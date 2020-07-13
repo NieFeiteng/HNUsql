@@ -16,6 +16,9 @@ public class Server{
 
     PrintWriter socOut;
 
+//    private String userName;
+//    private String passWord;
+
 
     public void initial_server()throws Exception{
         try{

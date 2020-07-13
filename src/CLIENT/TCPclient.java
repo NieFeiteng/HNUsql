@@ -1,15 +1,35 @@
 package CLIENT;
 
 
-public class TCPclient {
+public class      TCPclient {
     public static void main(String[] args) throws Exception {
+
+        String userName = "";
+        //登录
+        while(true){
+            System.out.print("Enter your username:");
+            userName = Connect.read_line_from_client();
+            System.out.print("Enter your passWord:");
+            String paasWord = Connect.read_line_from_client();
+
+            Connect.out_to_server(userName);
+            Connect.out_to_server(paasWord);
+
+            String result  = Connect.read_line_from_server();//直接返回字符串
+
+            if(result.contains("Wrong user name or password") ) System.out.println("Wrong user name or password");
+            else if(result.contains("user does not exist")) System.out.println("user does not exist");
+            else break;
+        }
+
+
 
         String readLine;
         readLine = Connect.read_line_from_server(); //读取welcome
 
         while (true){
 
-            readLine = Connect.read_line_from_server();//返回数据包含“HNUsql-->”代表一条SQL语句执行完毕
+            readLine = Connect.read_line_from_server();//返回数据包含“HNUsql-->”表示应该继续从client输入
             while(!readLine.contains("HNUsql-->")){
                 readLine = Connect.read_line_from_server();
             }

@@ -26,8 +26,17 @@ public class Interpreter {
     public static void main(String[] args) {
         try {
             API.initial();
-            System.out.println("Welcome to HNUsql~");
-            Connect.out_to_client("Welcome to HNUsql~");
+
+            //登录
+            String userName = Connect.read_line_from_client();
+            String passWord = Connect.read_line_from_client();
+
+            String result = "ok";
+            Connect.out_to_client(result);//任何东西，直接过
+
+
+            System.out.println("Welcome to HNUsql~" + userName);
+            Connect.out_to_client("Welcome to HNUsql~" + userName);
 
 
 //            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));//从键盘接受一行输入
@@ -488,7 +497,7 @@ public class Interpreter {
 //        reader.close(); //
         System.out.println("Bye");
         Connect.out_to_client("Bye");
-        Connect.close_server();
+        Connect.close_server();//关闭
         System.exit(0);
     }
 
