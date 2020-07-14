@@ -1,7 +1,7 @@
 package CLIENT;
 
 
-public class      TCPclient {
+public class     TCPclient {
     public static void main(String[] args) throws Exception {
 
         String userName = "";
@@ -40,7 +40,8 @@ public class      TCPclient {
             if(readLine.contains("quit;"))break;
 
             while(!readLine.contains(";")){
-                System.out.print("HNUsql-->");
+                // System.out.print("HNUsql-->");
+                readLine = Connect.read_line_from_server();
                 readLine = Connect.read_line_from_client();
                 Connect.out_to_server(readLine);
             }

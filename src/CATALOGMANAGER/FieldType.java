@@ -23,7 +23,7 @@ public class FieldType {
         this.length = length;
     }
 
-    NumType get_type() {
+    public NumType get_type() {
         return this.type;
     }
 

@@ -16,8 +16,8 @@ public class Server{
 
     PrintWriter socOut;
 
-//    private String userName;
-//    private String passWord;
+    // private static String userName;
+    // private static String passWord;
 
 
     public void initial_server()throws Exception{
@@ -92,7 +92,6 @@ public class Server{
         }catch(Exception e){
             System.out.println("Error" + e);
         }
-
     }
 
 }

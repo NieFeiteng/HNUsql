@@ -14,6 +14,8 @@ public class Connect {
         }
     }
 
+    private static String userName;
+    private static String passWord;
 
 
     public static void out_to_client(String str) throws Exception {
@@ -57,5 +59,21 @@ public class Connect {
         }
     }
 
+    public static String  get_username(){
+        return userName;
+    }
+
+    public static String get_password(){
+        return passWord;
+    }
+
+    public static void change_username(String user){
+        userName = user;
+    }
+
+    public static void change_password(String password){
+        passWord = password;
+        
+    }
 
 }

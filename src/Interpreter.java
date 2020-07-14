@@ -14,9 +14,7 @@ import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/*----NIE----*/
-import java.util.Date;
-/*----NIE----*/
+
 
 public class Interpreter {
 
@@ -28,19 +26,19 @@ public class Interpreter {
             API.initial();
 
             //登录
-            String userName = Connect.read_line_from_client();
-            String passWord = Connect.read_line_from_client();
+            Connect.change_username(Connect.read_line_from_client()); 
+            Connect.change_password(Connect.read_line_from_client());
 
             String result = "ok";
             Connect.out_to_client(result);//任何东西，直接过
 
 
-            System.out.println("Welcome to HNUsql~" + userName);
-            Connect.out_to_client("Welcome to HNUsql~" + userName);
-
+            System.out.println("Welcome to HNUsql~ " + Connect.get_username());
+            Connect.out_to_client("Welcome to HNUsql~ " + Connect.get_username());
 
 //            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));//从键盘接受一行输入
 //            interpret(reader);
+
             interpret( Connect.get_sysbuf());
         } catch (IOException e) {
             System.out.println("101 Run time error : IO exception occurs");
@@ -72,12 +70,11 @@ public class Interpreter {
 //                System.out.print("-->");
                 while (true) {  //read whole statement until ';'
 
-//                    line = reader.readLine();  改用connect中的接口从客户端读取数据
-
-                    line = Connect.read_line_from_client();//从客户端读取数据
+                    if(execFile != 0) line = reader.readLine();  //改用connect中的接口从客户端读取数据
+                    else line = Connect.read_line_from_client();//从客户端读取数据
 
                     if (line == null) { //read the file tail
-                        //reader.close();
+                        if (execFile != 0 ) reader.close();
                         return;
                     } else if (line.contains(";")) { //last line
                         index = line.indexOf(";");
@@ -152,6 +149,9 @@ public class Interpreter {
                         break;
                     case "show":
                         parse_show(result);
+                        break;
+                    case "update":
+                        parse_update(result);
                         break;
                     default:
                         throw new QException(0, 205, "Can't identify " + tokens[0]);
@@ -485,6 +485,172 @@ public class Interpreter {
             tempstr = "Query ok! " + s + " row(s) are deleted";
             Connect.out_to_client(tempstr);
         }
+    }
+
+    private static void parse_update(String statement)throws Exception{
+        //select ... from ... where ...
+        //update table set att = value; att=value where ...
+        String attrStr = "*";
+        String tabStr = Utils.substring(statement, "update ", " set");
+        String conStr = Utils.substring(statement, "where ", "");
+        String setStr = Utils.substring(statement, "set ", "where");//要更新的属性和值
+
+        Vector<Condition> conditions;
+        long startTime, endTime;
+        startTime = System.currentTimeMillis();
+        if (attrStr.equals(""))
+            throw new QException(0, 250, "Can not find key word 'from' or lack of blank before from!");
+        Vector<TableRow> ret;
+        if (conStr.equals("")) {  // select * from [];
+            // tabStr = Utils.substring(statement, "from ", "");
+                                  //update table set att=value;
+            setStr = Utils.substring(statement, "set ", "");
+            ret = API.select(tabStr, new Vector<>(), new Vector<>());
+        } else { //select * from [] where [];
+            String[] conSet = conStr.split(" *and *");
+            //get condition vector
+            conditions = Utils.create_conditon(conSet);
+            ret = API.select(tabStr, new Vector<>(), conditions);
+            
+        }
+        
+        //delete from [tabName] where []
+        int num;
+        Vector<Condition> conditions1;
+        // Vector<String> attrNames;
+        String tempstr = "";
+        if (conStr.equals("")) {  //delete from ...
+            num = API.delete_row(tabStr, new Vector<>());
+            String s = String.valueOf(num);
+        } else {  //delete from ... where ...
+            String[] conSet = conStr.split(" *and *");
+            //get condition vector
+            conditions1 = Utils.create_conditon(conSet);
+            num = API.delete_row(tabStr, conditions1);
+        }
+            //num=ret.size();
+            
+        Table tmpTable = CatalogManager.get_table(tabStr);//获得表
+        setStr = setStr.toString().trim().replaceAll("\\s+", " ");;
+        String[] tokens = setStr.split(" ");
+        int attrSize = ret.get(0).get_attribute_size();
+        
+        for(int i = 0;i<num;i++){//insert into student values(1080100006,'name6',89.5);
+            TableRow row = ret.get(i);
+            String insertstate = "insert into " + tabStr + " values(";            
+            String attrName = "";
+            Attribute tmpAttribute;    
+            for(int j=0;j<attrSize;j++){
+                tmpAttribute = tmpTable.attributeVector.get(j);
+                String tmpvalue = row.get_attribute_value(j);
+                attrName = tmpAttribute.attributeName;//属性名
+                for(int k = 0 ; k < tokens.length;k+=3){
+                    if(attrName.equals(tokens[k])){//加上要更新的值
+                        if(tokens[k+1].equals("+=") ){
+                            if(tmpAttribute.type.get_type()== NumType.INT) tmpvalue = 
+                            String.valueOf(Integer.parseInt(tmpvalue) + Integer.parseInt(tokens[k+2]));
+                            else if(tmpAttribute.type.get_type()== NumType.FLOAT) tmpvalue = 
+                            String.valueOf(Float.parseFloat(tmpvalue) + Float.parseFloat(tokens[k+2]));
+                            else tmpvalue = tokens[k+2];
+                        }else if(tokens[k+1].equals("-=")){
+                            if(tmpAttribute.type.get_type()== NumType.INT) tmpvalue = 
+                            String.valueOf(Integer.parseInt(tmpvalue) - Integer.parseInt(tokens[k+2]));
+                            else if(tmpAttribute.type.get_type()== NumType.FLOAT) tmpvalue = 
+                            String.valueOf(Float.parseFloat(tmpvalue) - Float.parseFloat(tokens[k+2]));
+                            else tmpvalue = tokens[k+2];
+                        } else 
+                        tmpvalue = tokens[k+2] ;
+                        break;
+                    }                  
+                }
+
+                if(tmpAttribute.type.get_type()== NumType.CHAR)//CHAR,INT,FLOAT
+                {
+                    insertstate += "\'" + tmpvalue + "\'";
+                }else insertstate += tmpvalue ;  
+                if(j != attrSize - 1) insertstate += ",";
+            }
+            insertstate +=")";
+            
+        insertstate = insertstate.replaceAll(" *\\( *", " (").replaceAll(" *\\) *", ") ");
+        insertstate = insertstate.replaceAll(" *, *", ",");
+        insertstate = insertstate.trim();
+        insertstate = insertstate.replaceAll("^insert", "").trim();  //skip insert keyword
+
+        int startIndex, endIndex;
+        if (insertstate.equals(""))
+            throw new QException(0, 901, "Must add keyword 'into' after insert ");
+
+        endIndex = insertstate.indexOf(" "); //check into keyword
+        if (endIndex == -1)
+            throw new QException(0, 902, "Not specify the table name");
+        if (!insertstate.substring(0, endIndex).equals("into"))
+            throw new QException(0, 903, "Must add keyword 'into' after insert");
+
+        startIndex = endIndex + 1;
+        endIndex = insertstate.indexOf(" ", startIndex); //check table name
+        if (endIndex == -1)
+            throw new QException(0, 904, "Not specify the insert value");
+
+        String tableName = insertstate.substring(startIndex, endIndex); //get table name
+        startIndex = endIndex + 1;
+        endIndex = insertstate.indexOf(" ", startIndex); //check values keyword
+        if (endIndex == -1)
+            throw new QException(0, 905, "Syntax error: Not specify the insert value");
+
+        if (!insertstate.substring(startIndex, endIndex).equals("values"))
+            throw new QException(0, 906, "Must add keyword 'values' after table " + tableName);
+
+        startIndex = endIndex + 1;
+        if (!insertstate.substring(startIndex).matches("^\\(.*\\)$"))  //check brackets
+            throw new QException(0, 907, "Can't not find the insert brackets in table " + tableName);
+
+        String[] valueParas = insertstate.substring(startIndex + 1).split(","); //get attribute tokens
+        TableRow tableRow = new TableRow();
+
+        for ( i = 0; i < valueParas.length; i++) {
+            if (i == valueParas.length - 1)  //last attribute
+                valueParas[i] = valueParas[i].substring(0, valueParas[i].length() - 1);
+            if (valueParas[i].equals("")) //empty attribute
+                throw new QException(0, 908, "Empty attribute value in insert value");
+            if (valueParas[i].matches("^\".*\"$") || valueParas[i].matches("^\'.*\'$"))  // extract from '' or " "
+                valueParas[i] = valueParas[i].substring(1, valueParas[i].length() - 1);
+            tableRow.add_attribute_value(valueParas[i]); //add to table row
+        }
+
+        //Check unique attributes
+        if (tableRow.get_attribute_size() != CatalogManager.get_attribute_num(tableName))
+            throw new QException(1, 909, "Attribute number doesn't match");
+        Vector<Attribute> attributes = CatalogManager.get_table(tableName).attributeVector;
+        for (i = 0; i < attributes.size(); i++) {
+            Attribute attr = attributes.get(i);
+            if (attr.isUnique) {
+                Condition cond = new Condition(attr.attributeName, "=", valueParas[i]);
+                if (CatalogManager.is_index_key(tableName, attr.attributeName)) {
+                    Index idx = CatalogManager.get_index(CatalogManager.get_index_name(tableName, attr.attributeName));
+                    if (IndexManager.select(idx, cond).isEmpty())
+                        continue;
+                } else {
+                    Vector<Condition> conditions2 = new Vector<>();
+                    conditions2.add(cond);
+                    Vector<TableRow> res = RecordManager.select(tableName, conditions2); //Supposed to be empty
+                    if (res.isEmpty())
+                        continue;
+                }
+                throw new QException(1, 910, "Duplicate unique key: " + attr.attributeName);
+            }
+        }
+        API.insert_row(tableName, tableRow);
+        }
+
+        endTime = System.currentTimeMillis();
+
+        System.out.println("-->Update successfully");
+        Connect.out_to_client("-->Update successfully");
+
+        double usedTime = (endTime - startTime) / 1000.0;
+        System.out.println("Finished in " + usedTime + " s");
+        Connect.out_to_client("Finished in " + usedTime + " s");
     }
 
 

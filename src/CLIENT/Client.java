@@ -21,7 +21,6 @@ public class Client{
         try{
             //建立套接字
 
-            //监听
             socket =  new Socket("127.0.0.1",4700);
             //建立连接
             sysIn = new InputStreamReader(System.in);
