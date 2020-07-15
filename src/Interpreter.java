@@ -490,7 +490,6 @@ public class Interpreter {
     private static void parse_update(String statement)throws Exception{
         //select ... from ... where ...
         //update table set att = value; att=value where ...
-        String attrStr = "*";
         String tabStr = Utils.substring(statement, "update ", " set");
         String conStr = Utils.substring(statement, "where ", "");
         String setStr = Utils.substring(statement, "set ", "where");//要更新的属性和值
@@ -498,11 +497,10 @@ public class Interpreter {
         Vector<Condition> conditions;
         long startTime, endTime;
         startTime = System.currentTimeMillis();
-        if (attrStr.equals(""))
-            throw new QException(0, 250, "Can not find key word 'from' or lack of blank before from!");
         Vector<TableRow> ret;
+        if (tabStr.equals(""))
+            throw new QException(0, 902, "Not specify the table name");
         if (conStr.equals("")) {  // select * from [];
-            // tabStr = Utils.substring(statement, "from ", "");
                                   //update table set att=value;
             setStr = Utils.substring(statement, "set ", "");
             ret = API.select(tabStr, new Vector<>(), new Vector<>());
@@ -513,15 +511,34 @@ public class Interpreter {
             ret = API.select(tabStr, new Vector<>(), conditions);
             
         }
+        setStr = setStr.toString().trim().replaceAll("\\s+", " ");;
+        String[] tokens = setStr.split(" ");
+        int attrSize = ret.get(0).get_attribute_size();
         
+        Table tmpTable = CatalogManager.get_table(tabStr);//获得表
+        TableRow row1= ret.get(0);
+        String attrName = "";
+        Attribute tmpAttribute1;   
+        int isattright = 0; 
+        for(int k = 0 ; k < tokens.length;k+=3){
+            for(int j=0;j<attrSize;j++){
+                tmpAttribute1 = tmpTable.attributeVector.get(j);
+                attrName = tmpAttribute1.attributeName;//属性名  
+                if(attrName.equals(tokens[k])){//加上要更新的值
+                    isattright = 1;
+                    break;
+                }                  
+            }
+            if(isattright == 0){
+                throw new QException(0, 907, "Can't not find the attributeName in table " + tabStr);
+            }   
+            isattright = 0;     
+        }
         //delete from [tabName] where []
         int num;
         Vector<Condition> conditions1;
-        // Vector<String> attrNames;
-        String tempstr = "";
         if (conStr.equals("")) {  //delete from ...
             num = API.delete_row(tabStr, new Vector<>());
-            String s = String.valueOf(num);
         } else {  //delete from ... where ...
             String[] conSet = conStr.split(" *and *");
             //get condition vector
@@ -530,22 +547,21 @@ public class Interpreter {
         }
             //num=ret.size();
             
-        Table tmpTable = CatalogManager.get_table(tabStr);//获得表
-        setStr = setStr.toString().trim().replaceAll("\\s+", " ");;
-        String[] tokens = setStr.split(" ");
-        int attrSize = ret.get(0).get_attribute_size();
+        
         
         for(int i = 0;i<num;i++){//insert into student values(1080100006,'name6',89.5);
             TableRow row = ret.get(i);
             String insertstate = "insert into " + tabStr + " values(";            
-            String attrName = "";
+            attrName = "";
             Attribute tmpAttribute;    
             for(int j=0;j<attrSize;j++){
                 tmpAttribute = tmpTable.attributeVector.get(j);
                 String tmpvalue = row.get_attribute_value(j);
                 attrName = tmpAttribute.attributeName;//属性名
+                
                 for(int k = 0 ; k < tokens.length;k+=3){
                     if(attrName.equals(tokens[k])){//加上要更新的值
+                        
                         if(tokens[k+1].equals("+=") ){
                             if(tmpAttribute.type.get_type()== NumType.INT) tmpvalue = 
                             String.valueOf(Integer.parseInt(tmpvalue) + Integer.parseInt(tokens[k+2]));
@@ -572,75 +588,73 @@ public class Interpreter {
             }
             insertstate +=")";
             
-        insertstate = insertstate.replaceAll(" *\\( *", " (").replaceAll(" *\\) *", ") ");
-        insertstate = insertstate.replaceAll(" *, *", ",");
-        insertstate = insertstate.trim();
-        insertstate = insertstate.replaceAll("^insert", "").trim();  //skip insert keyword
+            insertstate = insertstate.replaceAll(" *\\( *", " (").replaceAll(" *\\) *", ") ");
+            insertstate = insertstate.replaceAll(" *, *", ",");
+            insertstate = insertstate.trim();
+            insertstate = insertstate.replaceAll("^insert", "").trim();  //skip insert keyword
 
-        int startIndex, endIndex;
-        if (insertstate.equals(""))
-            throw new QException(0, 901, "Must add keyword 'into' after insert ");
+            int startIndex, endIndex;
+            // if (insertstate.equals(""))
+            //     throw new QException(0, 901, "Must add keyword 'into' after insert ");
 
-        endIndex = insertstate.indexOf(" "); //check into keyword
-        if (endIndex == -1)
-            throw new QException(0, 902, "Not specify the table name");
-        if (!insertstate.substring(0, endIndex).equals("into"))
-            throw new QException(0, 903, "Must add keyword 'into' after insert");
+            endIndex = insertstate.indexOf(" "); //check into keyword
+            if (endIndex == -1)
+                throw new QException(0, 902, "Not specify the table name");
 
-        startIndex = endIndex + 1;
-        endIndex = insertstate.indexOf(" ", startIndex); //check table name
-        if (endIndex == -1)
-            throw new QException(0, 904, "Not specify the insert value");
+            startIndex = endIndex + 1;
+            endIndex = insertstate.indexOf(" ", startIndex); //check table name
+            if (endIndex == -1)
+                throw new QException(0, 904, "Not specify the insert value");
 
-        String tableName = insertstate.substring(startIndex, endIndex); //get table name
-        startIndex = endIndex + 1;
-        endIndex = insertstate.indexOf(" ", startIndex); //check values keyword
-        if (endIndex == -1)
-            throw new QException(0, 905, "Syntax error: Not specify the insert value");
+            String tableName = insertstate.substring(startIndex, endIndex); //get table name
+            startIndex = endIndex + 1;
+            endIndex = insertstate.indexOf(" ", startIndex); //check values keyword
+            if (endIndex == -1)
+                throw new QException(0, 905, "Syntax error: Not specify the insert value");
 
-        if (!insertstate.substring(startIndex, endIndex).equals("values"))
-            throw new QException(0, 906, "Must add keyword 'values' after table " + tableName);
+            if (!insertstate.substring(startIndex, endIndex).equals("values"))
+                throw new QException(0, 906, "Must add keyword 'values' after table " + tableName);
 
-        startIndex = endIndex + 1;
-        if (!insertstate.substring(startIndex).matches("^\\(.*\\)$"))  //check brackets
-            throw new QException(0, 907, "Can't not find the insert brackets in table " + tableName);
+            startIndex = endIndex + 1;
+            if (!insertstate.substring(startIndex).matches("^\\(.*\\)$"))  //check brackets
+                throw new QException(0, 907, "Can't not find the insert brackets in table " + tableName);
 
-        String[] valueParas = insertstate.substring(startIndex + 1).split(","); //get attribute tokens
-        TableRow tableRow = new TableRow();
+            String[] valueParas = insertstate.substring(startIndex + 1).split(","); //get attribute tokens
+            TableRow tableRow = new TableRow();
 
-        for ( i = 0; i < valueParas.length; i++) {
-            if (i == valueParas.length - 1)  //last attribute
-                valueParas[i] = valueParas[i].substring(0, valueParas[i].length() - 1);
-            if (valueParas[i].equals("")) //empty attribute
-                throw new QException(0, 908, "Empty attribute value in insert value");
-            if (valueParas[i].matches("^\".*\"$") || valueParas[i].matches("^\'.*\'$"))  // extract from '' or " "
-                valueParas[i] = valueParas[i].substring(1, valueParas[i].length() - 1);
-            tableRow.add_attribute_value(valueParas[i]); //add to table row
-        }
-
-        //Check unique attributes
-        if (tableRow.get_attribute_size() != CatalogManager.get_attribute_num(tableName))
-            throw new QException(1, 909, "Attribute number doesn't match");
-        Vector<Attribute> attributes = CatalogManager.get_table(tableName).attributeVector;
-        for (i = 0; i < attributes.size(); i++) {
-            Attribute attr = attributes.get(i);
-            if (attr.isUnique) {
-                Condition cond = new Condition(attr.attributeName, "=", valueParas[i]);
-                if (CatalogManager.is_index_key(tableName, attr.attributeName)) {
-                    Index idx = CatalogManager.get_index(CatalogManager.get_index_name(tableName, attr.attributeName));
-                    if (IndexManager.select(idx, cond).isEmpty())
-                        continue;
-                } else {
-                    Vector<Condition> conditions2 = new Vector<>();
-                    conditions2.add(cond);
-                    Vector<TableRow> res = RecordManager.select(tableName, conditions2); //Supposed to be empty
-                    if (res.isEmpty())
-                        continue;
-                }
-                throw new QException(1, 910, "Duplicate unique key: " + attr.attributeName);
+            for ( i = 0; i < valueParas.length; i++) {
+                if (i == valueParas.length - 1)  //last attribute
+                    valueParas[i] = valueParas[i].substring(0, valueParas[i].length() - 1);
+                if (valueParas[i].equals("")) //empty attribute
+                    throw new QException(0, 909, "Empty attribute value in updata value");
+                if (valueParas[i].matches("^\".*\"$") || valueParas[i].matches("^\'.*\'$"))  // extract from '' or " "
+                    valueParas[i] = valueParas[i].substring(1, valueParas[i].length() - 1);
+                tableRow.add_attribute_value(valueParas[i]); //add to table row
             }
-        }
-        API.insert_row(tableName, tableRow);
+
+            //Check unique attributes
+            if (tableRow.get_attribute_size() != CatalogManager.get_attribute_num(tableName))
+                throw new QException(1, 909, "Attribute number doesn't match");
+            Vector<Attribute> attributes = CatalogManager.get_table(tableName).attributeVector;
+            for (i = 0; i < attributes.size(); i++) {
+                Attribute attr = attributes.get(i);
+                if (attr.isUnique) {
+                    Condition cond = new Condition(attr.attributeName, "=", valueParas[i]);
+                    if (CatalogManager.is_index_key(tableName, attr.attributeName)) {
+                        Index idx = CatalogManager.get_index(CatalogManager.get_index_name(tableName, attr.attributeName));
+                        if (IndexManager.select(idx, cond).isEmpty())
+                            continue;
+                    } else {
+                        Vector<Condition> conditions2 = new Vector<>();
+                        conditions2.add(cond);
+                        Vector<TableRow> res = RecordManager.select(tableName, conditions2); //Supposed to be empty
+                        if (res.isEmpty())
+                            continue;
+                    }
+                    throw new QException(1, 910, "Duplicate unique key: " + attr.attributeName);
+                }
+            }
+            API.insert_row(tableName, tableRow);
         }
 
         endTime = System.currentTimeMillis();

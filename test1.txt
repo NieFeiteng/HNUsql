@@ -11,6 +11,6 @@ insert into student values(1080100003,'name3',98.5);
 select * from student;
 update student set score += 10 where name = name1 ;
 select * from student;
-update student set score -= 10 where name = name1 ;
+update student set scoreee -= 10 where name = name1 ;
 select * from student;
 drop table student;
