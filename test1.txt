@@ -8,9 +8,22 @@ select * from student;
 insert into student values(1080100001,'name1',99);
 insert into student values(1080100002,'name2',52.5);
 insert into student values(1080100003,'name3',98.5);
+insert into student values(1080100004,'name4',91.5);
+insert into student values(1080100005,'name5',72.5);
+insert into student values(1080100006,'name6',89.5);
 select * from student;
-update student set score += 10 where name = name1 ;
+
+update student set score += 10 where name=name1 ;
 select * from student;
-update student set scoreee -= 10 where name = name1 ;
+update student set scoreee -= 10 where name=name1 ;
 select * from student;
+update student set score -= 10 where name=name2  and score=52.5 ;
+select * from student;
+
+select * from student where score<90 and score>50;
+update student set score-=10 where score<90 and score>50;
+select * from student where score<90 and score>50;
+select * from student where score<90 and score>50;
+select * from student;
+
 drop table student;

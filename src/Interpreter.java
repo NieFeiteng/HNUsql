@@ -509,14 +509,37 @@ public class Interpreter {
             //get condition vector
             conditions = Utils.create_conditon(conSet);
             ret = API.select(tabStr, new Vector<>(), conditions);
-            
         }
-        setStr = setStr.toString().trim().replaceAll("\\s+", " ");;
-        String[] tokens = setStr.split(" ");
+        
+        setStr = setStr.toString().trim().replaceAll("\\s+", "");;
+        String[] token0 = setStr.split(";");
+        int num_of_set_att = token0.length;
+        String [] tokens = new String [num_of_set_att*3];
+        if(setStr.contains("-=")){
+            for(int ii=0;ii<num_of_set_att;ii++){
+                tokens[ii]=Utils.substring(token0[ii], "", "-=");
+                tokens[ii+1] = "-=";
+                tokens[ii+2]=Utils.substring(token0[ii], "-=", "");
+            }
+        }else if(setStr.contains("+=")){
+            for(int ii=0;ii<num_of_set_att;ii++){
+                tokens[ii]=Utils.substring(token0[ii], "", "\\+=");
+                tokens[ii+1] = "+=";
+                tokens[ii+2]=Utils.substring(token0[ii], "\\+=", "");
+            }
+        }else{
+            for(int ii=0;ii<num_of_set_att;ii++){
+                tokens[ii]=Utils.substring(token0[ii], "", "=");
+                tokens[ii+1] = "=";
+                tokens[ii+2]=Utils.substring(token0[ii], "=", "");
+            }
+        }
+
+//       Connect.out_to_client("Token:" + tokens[0] + " " + tokens[1] + " "+ tokens[2]);
+
         int attrSize = ret.get(0).get_attribute_size();
         
         Table tmpTable = CatalogManager.get_table(tabStr);//获得表
-        TableRow row1= ret.get(0);
         String attrName = "";
         Attribute tmpAttribute1;   
         int isattright = 0; 
@@ -530,27 +553,25 @@ public class Interpreter {
                 }                  
             }
             if(isattright == 0){
+                Connect.out_to_client(tabStr + " " + attrName + " " + tokens[k]);
                 throw new QException(0, 907, "Can't not find the attributeName in table " + tabStr);
             }   
             isattright = 0;     
         }
         //delete from [tabName] where []
-        int num;
         Vector<Condition> conditions1;
         if (conStr.equals("")) {  //delete from ...
-            num = API.delete_row(tabStr, new Vector<>());
+            API.delete_row(tabStr, new Vector<>());
         } else {  //delete from ... where ...
             String[] conSet = conStr.split(" *and *");
             //get condition vector
             conditions1 = Utils.create_conditon(conSet);
-            num = API.delete_row(tabStr, conditions1);
+            API.delete_row(tabStr, conditions1);
         }
-            //num=ret.size();
             
-        
-        
-        for(int i = 0;i<num;i++){//insert into student values(1080100006,'name6',89.5);
-            TableRow row = ret.get(i);
+    
+        for(int l = 0;l<ret.size();l++){//insert into student values(1080100006,'name6',89.5);
+            TableRow row = ret.get(l);
             String insertstate = "insert into " + tabStr + " values(";            
             attrName = "";
             Attribute tmpAttribute;    
@@ -587,7 +608,6 @@ public class Interpreter {
                 if(j != attrSize - 1) insertstate += ",";
             }
             insertstate +=")";
-            
             insertstate = insertstate.replaceAll(" *\\( *", " (").replaceAll(" *\\) *", ") ");
             insertstate = insertstate.replaceAll(" *, *", ",");
             insertstate = insertstate.trim();
@@ -622,7 +642,7 @@ public class Interpreter {
             String[] valueParas = insertstate.substring(startIndex + 1).split(","); //get attribute tokens
             TableRow tableRow = new TableRow();
 
-            for ( i = 0; i < valueParas.length; i++) {
+            for (int  i = 0; i < valueParas.length; i++) {
                 if (i == valueParas.length - 1)  //last attribute
                     valueParas[i] = valueParas[i].substring(0, valueParas[i].length() - 1);
                 if (valueParas[i].equals("")) //empty attribute
@@ -636,7 +656,7 @@ public class Interpreter {
             if (tableRow.get_attribute_size() != CatalogManager.get_attribute_num(tableName))
                 throw new QException(1, 909, "Attribute number doesn't match");
             Vector<Attribute> attributes = CatalogManager.get_table(tableName).attributeVector;
-            for (i = 0; i < attributes.size(); i++) {
+            for (int i = 0; i < attributes.size(); i++) {
                 Attribute attr = attributes.get(i);
                 if (attr.isUnique) {
                     Condition cond = new Condition(attr.attributeName, "=", valueParas[i]);
@@ -662,9 +682,9 @@ public class Interpreter {
         System.out.println("-->Update successfully");
         Connect.out_to_client("-->Update successfully");
 
-        double usedTime = (endTime - startTime) / 1000.0;
-        System.out.println("Finished in " + usedTime + " s");
-        Connect.out_to_client("Finished in " + usedTime + " s");
+//        double usedTime = (endTime - startTime) / 1000.0;
+//        System.out.println("Finished in " + usedTime + " s");
+//        Connect.out_to_client("Finished in " + usedTime + " s");
     }
 
 
