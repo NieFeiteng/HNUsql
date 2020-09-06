@@ -28,6 +28,7 @@ public class Connect {
         String str = "";
         try {
             str = client.get_from_server();
+
         }catch(Exception e){
             System.out.println("Error" + e);
         }

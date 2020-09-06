@@ -9,14 +9,91 @@ import RECORDMANAGER.RecordManager;
 
 import java.util.Vector;
 
+    /*
+create table PASSWORD(
+    Name char(20) unique,
+    Password char(10),
+    Type char(1),
+    primary key(Name)
+);
+insert into PASSWORD values('root','0123456789','1');
+select * from PASSWORD;
+
+create table ADMINISTRATOR_root(
+    TableName char(20) unique,
+    primary key(TableName)
+);
+
+create table test1(
+id int,
+primary key(id)
+);
+insert into test1 values(1);
+select * from test1;
+
+     */
+
 public class Main {
-/*
+
     public static void main(String[] args) {
-        API api = new API();
-        //buffer_unit_test(); //Buffer Manager test function
-        //catalog_unit_test1();
-        //catalog_unit_test2();
+
+        try {
+            API.initial();
+
+            DBManager Manager=new DBManager("root","0123456789");
+            //Manager.Ad_creatAd();
+            Manager.Ad_AddTable("test1");
+            Manager.Ad_CreatUser("user1","1111111111");
+            //Manager.Grantinit("user1","test1");
+
+            DBUser User=new DBUser("user1","1111111111");
+            System.out.println("-----------------------------------");
+            //授权测试
+            //当管理员没有表的权限时
+            Manager.Grant("user1","test2",1);
+            Manager.Revoke("user1","test2",1);
+            System.out.println("-----------------------------------");
+
+            //Add
+            User.Add_Authority("test1");
+            Manager.Grant("user1","test1",1);
+            User.Add_Authority("test1");
+            Manager.Revoke("user1","test1",1);
+            User.Add_Authority("test1");
+            System.out.println("-----------------------------------");
+            //Delete
+            User.Delete_Authority("test1");
+            Manager.Grant("user1","test1",2);
+            User.Delete_Authority("test1");
+            Manager.Revoke("user1","test1",2);
+            User.Delete_Authority("test1");
+            System.out.println("-----------------------------------");
+            //update
+            User.Update_Authority("test1");
+            Manager.Grant("user1","test1",3);
+            User.Update_Authority("test1");
+            Manager.Revoke("user1","test1",3);
+            User.Update_Authority("test1");
+            System.out.println("-----------------------------------");
+            //select
+            User.Select_Authority("test1");
+            Manager.Grant("user1","test1",4);
+            User.Select_Authority("test1");
+            Manager.Revoke("user1","test1",4);
+            User.Select_Authority("test1");
+            System.out.println("-----------------------------------");
+
+            Manager.Ad_DropUser("user1");
+
+            //API.store();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
+
+/*
 
     public static void buffer_unit_test() {
         String buffer_test_file_name = "buffer_test";

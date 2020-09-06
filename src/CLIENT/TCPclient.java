@@ -1,7 +1,7 @@
 package CLIENT;
 
 
-public class     TCPclient {
+public class  TCPclient {
     public static void main(String[] args) throws Exception {
 
         String userName = "";
@@ -17,12 +17,8 @@ public class     TCPclient {
 
             String result  = Connect.read_line_from_server();//直接返回字符串
 
-            if(result.contains("Wrong user name or password") ) System.out.println("Wrong user name or password");
-            else if(result.contains("user does not exist")) System.out.println("user does not exist");
-            else break;
+            if(!result.contains("Wrong user name or password") ) break;
         }
-
-
 
         String readLine;
         readLine = Connect.read_line_from_server(); //读取welcome

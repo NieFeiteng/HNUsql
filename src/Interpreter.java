@@ -20,26 +20,55 @@ public class Interpreter {
 
 //    private static boolean nestLock = false; //not permit to use nesting sql file execution
     private static int execFile = 0;
+    public static boolean rtype;
+    public static String rusername;
+    public static String rpassword;
+    public static DBManager rmanager;
+    public static DBUser ruser;
 
     public static void main(String[] args) {
         try {
             API.initial();
-
-            //登录
-            Connect.change_username(Connect.read_line_from_client()); 
+            boolean type;
+            while (true){
+            Connect.change_username(Connect.read_line_from_client());
             Connect.change_password(Connect.read_line_from_client());
 
-            String result = "ok";
-            Connect.out_to_client(result);//任何东西，直接过
+            /******检查登录是否正确*******/
 
+            String username = Connect.get_username();
+            String password = Connect.get_password();
 
-            System.out.println("Welcome to HNUsql~ " + Connect.get_username());
-            Connect.out_to_client("Welcome to HNUsql~ " + Connect.get_username());
+            //查PASSWORD表
+            Vector<String> rattrNames = new Vector<>();
+            rattrNames.add("Type");
+            Vector<Condition> rconditions = new Vector<>();
+            Condition rconditionl1 = new Condition("Name", "=", username);
+            Condition rconditionl2 = new Condition("Password", "=", password);
+            rconditions.add(rconditionl1);
+            rconditions.add(rconditionl2);
+            Vector<TableRow> rret = API.select("PASSWORD", rattrNames, rconditions);
+            int rnum = rret.size();
+            if (rnum > 0) {
+                if (rret.get(0).get_attribute_value(0).equals("1")) {
+                    type = true;
+                } else {
+                    type = false;
+                }
 
-//            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));//从键盘接受一行输入
-//            interpret(reader);
+                String result = "ok";
+                Connect.out_to_client(result);
+                System.out.println("Welcome to HNUsql~ " + Connect.get_username());
+                Connect.out_to_client("Welcome to HNUsql~ " + Connect.get_username());
+                break;
+            } else {
+                String result = "Wrong user name or password";
+                Connect.out_to_client(result);
 
-            interpret( Connect.get_sysbuf());
+                }
+            }
+            interpret( Connect.get_sysbuf(),type,Connect.get_username(),Connect.get_username());
+
         } catch (IOException e) {
             System.out.println("101 Run time error : IO exception occurs");
         } catch (Exception e) {
@@ -48,7 +77,17 @@ public class Interpreter {
 
     }
 
-    private static void interpret(BufferedReader reader) throws Exception {
+    private static void interpret(BufferedReader reader,boolean type,String username,String password) throws Exception {
+        rtype=type;
+        rusername=username;
+        rpassword=password;
+        if(rtype){
+            rmanager=new DBManager(username, password);
+        }
+        else {
+            ruser=new DBUser(username,password);
+        }
+
         String restState = ""; //rest statement after ';' in last line
 
         while (true) { //read for each statement
@@ -111,6 +150,9 @@ public class Interpreter {
                             case "table":
                                 parse_create_table(result);
                                 break;
+                            case "user":
+                                parse_create_user(result);
+                                break;
                             case "index":
                                 parse_create_index(result);
                                 break;
@@ -124,6 +166,9 @@ public class Interpreter {
                         switch (tokens[1]) {
                             case "table":
                                 parse_drop_table(result);
+                                break;
+                            case "user":
+                                parse_drop_user(result);
                                 break;
                             case "index":
                                 parse_drop_index(result);
@@ -153,6 +198,12 @@ public class Interpreter {
                     case "update":
                         parse_update(result);
                         break;
+                    case "grant":
+                        parse_grant(result);
+                        break;
+                    case "revoke":
+                        parse_revoke(result);
+                        break;
                     default:
                         throw new QException(0, 205, "Can't identify " + tokens[0]);
                 }
@@ -177,6 +228,12 @@ public class Interpreter {
     }
 
     private static void parse_create_table(String statement) throws Exception {
+        if(!rtype){
+            System.out.println("普通用户没有创建表的权利！");
+            Connect.out_to_client("-->普通用户没有创建表的权利！");
+            return;
+        }
+
         statement = statement.replaceAll(" *\\( *", " (").replaceAll(" *\\) *", ") ");
         statement = statement.replaceAll(" *, *", ",");
         statement = statement.trim();
@@ -273,11 +330,20 @@ public class Interpreter {
 
         Table table = new Table(tableName, primaryName, attrVec); // create table
         API.create_table(tableName, table);
+
+        rmanager.Ad_AddTable(tableName);
+
         System.out.println("-->Create table " + tableName + " successfully");
         Connect.out_to_client("-->Create table " + tableName + " successfully");
     }
 
     private static void parse_drop_table(String statement) throws Exception {
+        if(!rtype){
+            System.out.println("普通用户没有删除表的权利！");
+            Connect.out_to_client("-->普通用户没有删除表的权利！");
+            return;
+        }
+
         String[] tokens = statement.split(" ");
         if (tokens.length == 2)
             throw new QException(0, 601, "Not specify table name");
@@ -286,6 +352,9 @@ public class Interpreter {
 
         String tableName = tokens[2]; //get table name
         API.drop_table(tableName);
+
+        rmanager.Ad_DropTable(tableName);
+
         System.out.println("-->Drop table " + tableName + " successfully");
         Connect.out_to_client("-->Drop table " + tableName + " successfully");
     }
@@ -339,10 +408,12 @@ public class Interpreter {
     }
 
     private static void parse_select(String statement) throws Exception {
+
         //select ... from ... where ...
         String attrStr = Utils.substring(statement, "select ", " from");//取出各个部分的具体内容，如表名
         String tabStr = Utils.substring(statement, "from ", " where");
         String conStr = Utils.substring(statement, "where ", "");
+
         Vector<Condition> conditions;
         Vector<String> attrNames;
         long startTime, endTime;
@@ -353,10 +424,30 @@ public class Interpreter {
             //select all attributes
             if (tabStr.equals("")) {  // select * from [];
                 tabStr = Utils.substring(statement, "from ", "");
+
+                if(!rtype){
+                    if(!ruser.Select_Authority(tabStr)){
+                        System.out.println("用户"+rusername+"没有select此表的权利！");
+                        Connect.out_to_client("-->"+"用户"+rusername+"没有select此表的权利！");
+
+                        return;
+                    }
+                }
+
                 Vector<TableRow> ret = API.select(tabStr, new Vector<>(), new Vector<>());
                 endTime = System.currentTimeMillis();
                 Utils.print_rows(ret, tabStr);
             } else { //select * from [] where [];
+
+                if(!rtype){
+                    if(!ruser.Select_Authority(tabStr)){
+                        System.out.println("用户"+rusername+"没有select此表的权利！");
+                        Connect.out_to_client("-->"+"用户"+rusername+"没有select此表的权利！");
+
+                        return;
+                    }
+                }
+
                 String[] conSet = conStr.split(" *and *");
                 //get condition vector
                 conditions = Utils.create_conditon(conSet);
@@ -368,10 +459,30 @@ public class Interpreter {
             attrNames = Utils.convert(attrStr.split(" *, *")); //get attributes list
             if (tabStr.equals("")) {  //select [attr] from [];
                 tabStr = Utils.substring(statement, "from ", "");
+
+                if(!rtype){
+                    if(!ruser.Select_Authority(tabStr)){
+                        System.out.println("用户"+rusername+"没有select此表的权利！");
+                        Connect.out_to_client("-->"+"用户"+rusername+"没有select此表的权利！");
+
+                        return;
+                    }
+                }
+
                 Vector<TableRow> ret = API.select(tabStr, attrNames, new Vector<>());
                 endTime = System.currentTimeMillis();
                 Utils.print_rows(ret, tabStr);
             } else { //select [attr] from [table] where
+
+                if(!rtype){
+                    if(!ruser.Select_Authority(tabStr)){
+                        System.out.println("用户"+rusername+"没有select此表的权利！");
+                        Connect.out_to_client("-->"+"用户"+rusername+"没有select此表的权利！");
+
+                        return;
+                    }
+                }
+
                 String[] conSet = conStr.split(" *and *");
                 //get condition vector
                 conditions = Utils.create_conditon(conSet);
@@ -455,6 +566,15 @@ public class Interpreter {
             }
         }
 
+        if(!rtype){
+            if(!ruser.Add_Authority(tableName)){
+                System.out.println("用户"+rusername+"没有insert表"+tableName+"的权利！");
+                Connect.out_to_client("-->"+"用户"+rusername+"没有insert表"+tableName+"的权利！");
+
+                return;
+            }
+        }
+
         API.insert_row(tableName, tableRow);
         System.out.println("-->Insert successfully");
         Connect.out_to_client("-->Insert successfully");
@@ -465,17 +585,38 @@ public class Interpreter {
         int num;
         String tabStr = Utils.substring(statement, "from ", " where").trim();
         String conStr = Utils.substring(statement, "where ", "").trim();
+
         Vector<Condition> conditions;
         Vector<String> attrNames;
         String tempstr = "";
         if (tabStr.equals("")) {  //delete from ...
             tabStr = Utils.substring(statement, "from ", "").trim();
+
+            if(!rtype){
+                if(!ruser.Delete_Authority(tabStr)){
+                    System.out.println("用户"+rusername+"没有delete表"+tabStr+"的权利！");
+                    Connect.out_to_client("-->"+"用户"+rusername+"没有delete表"+tabStr+"的权利！");
+
+                    return;
+                }
+            }
+
             num = API.delete_row(tabStr, new Vector<>());
             System.out.println("Query ok! " + num + " row(s) are deleted");
             String s = String.valueOf(num);
             tempstr = "Query ok! " + s + " row(s) are deleted";
             Connect.out_to_client("Query ok! " + s + " row(s) are deleted");
         } else {  //delete from ... where ...
+
+            if(!rtype){
+                if(!ruser.Delete_Authority(tabStr)){
+                    System.out.println("用户"+rusername+"没有delete表"+tabStr+"的权利！");
+                    Connect.out_to_client("-->"+"用户"+rusername+"没有delete表"+tabStr+"的权利！");
+
+                    return;
+                }
+            }
+
             String[] conSet = conStr.split(" *and *");
             //get condition vector
             conditions = Utils.create_conditon(conSet);
@@ -493,6 +634,15 @@ public class Interpreter {
         String tabStr = Utils.substring(statement, "update ", " set");
         String conStr = Utils.substring(statement, "where ", "");
         String setStr = Utils.substring(statement, "set ", "where");//要更新的属性和值
+
+        if(!rtype){
+            if(!ruser.Update_Authority(tabStr)){
+                System.out.println("用户"+rusername+"没有update表"+tabStr+"的权利！");
+                Connect.out_to_client("-->"+"用户"+rusername+"没有update表"+tabStr+"的权利！");
+
+                return;
+            }
+        }
 
         Vector<Condition> conditions;
         long startTime, endTime;
@@ -713,7 +863,7 @@ public class Interpreter {
 //            if (nestLock)  //first enter in sql file execution
 //                throw new QException(0, 1102, "Can't use nested file execution");
 //            nestLock = true; //lock, avoid nested execution
-            interpret(fileReader);
+            interpret(fileReader,rtype,rusername,rpassword);
         } catch (FileNotFoundException e) {
             throw new QException(1, 1103, "Can't find the file");
         } catch (IOException e) {
@@ -723,6 +873,134 @@ public class Interpreter {
 //            nestLock = false; //unlock
         }
     }
+
+    private static void parse_create_user(String statement) throws Exception {
+        if(!rtype){
+            System.out.println("普通用户没有创建用户的权利！");
+            Connect.out_to_client("-->普通用户没有创建用户的权利！");
+            return;
+        }
+        String[] tokens = statement.split(" ");
+        if (tokens.length == 2)
+            throw new QException(0, 601, "Not specify user name or password");
+        if (tokens.length != 4)
+            throw new QException(0, 602, "SyntaxError!");
+
+        if(rmanager.Ad_CreatUser(tokens[2],tokens[3])){
+            Connect.out_to_client("-->creat user " + tokens[2] + " successfully");
+        }
+        else{
+            Connect.out_to_client("-->creat user " + tokens[2] + " unsuccessfully");
+        }
+
+        return;
+    }
+
+    private static void parse_drop_user(String statement) throws Exception {
+        if(!rtype){
+            System.out.println("普通用户没有删除用户的权利！");
+            Connect.out_to_client("-->普通用户没有删除用户的权利！");
+            return;
+        }
+
+        String[] tokens = statement.split(" ");
+        if (tokens.length == 2)
+            throw new QException(0, 601, "Not specify user");
+        if (tokens.length != 3)
+            throw new QException(0, 602, "SyntaxError!");
+
+        if(rmanager.Ad_DropUser(tokens[2])){
+            Connect.out_to_client("-->drop user " + tokens[2] + " successfully");
+        }
+        else{
+            Connect.out_to_client("-->drop user " + tokens[2] + " unsuccessfully");
+        }
+
+        return;
+    }
+
+    private static void parse_grant(String statement) throws Exception {
+        if(!rtype){
+            System.out.println("普通用户没有授权的权利！");
+            Connect.out_to_client("-->普通用户没有授权的权利！");
+            return;
+        }
+
+        String[] tokens = statement.split(" ");
+        if (tokens.length != 4)
+            throw new QException(0, 602, "SyntaxError!");
+
+        int rauthority=0;
+        if(tokens[3].equals("insert")){
+            rauthority=1;
+        }
+        else if(tokens[3].equals("delete")){
+            rauthority=2;
+        }
+        else if(tokens[3].equals("update")){
+            rauthority=3;
+        }
+        else if(tokens[3].equals("select")){
+            rauthority=4;
+        }
+        else{
+            System.out.println("权限错误");
+            Connect.out_to_client("-->权限错误");
+        }
+
+        if(rmanager.Grant(tokens[1],tokens[2],rauthority)){
+            System.out.println("成功授予"+tokens[1]+"表"+tokens[2]+"的"+tokens[3]+"权限");
+            Connect.out_to_client("-->"+"成功授予"+tokens[1]+"表"+tokens[2]+"的"+tokens[3]+"权限");
+        }
+        else {
+            System.out.println("授权错误");
+            Connect.out_to_client("-->授权错误");
+        }
+
+        return;
+    }
+
+    private static void parse_revoke(String statement) throws Exception {
+        if(!rtype){
+            System.out.println("普通用户没有权限回收的权利！");
+            Connect.out_to_client("-->普通用户没有权限回收的权利！");
+            return;
+        }
+
+        String[] tokens = statement.split(" ");
+        if (tokens.length != 4)
+            throw new QException(0, 602, "SyntaxError!");
+
+        int rauthority=0;
+        if(tokens[3].equals("insert")){
+            rauthority=1;
+        }
+        else if(tokens[3].equals("delete")){
+            rauthority=2;
+        }
+        else if(tokens[3].equals("update")){
+            rauthority=3;
+        }
+        else if(tokens[3].equals("select")){
+            rauthority=4;
+        }
+        else{
+            System.out.println("权限错误");
+            Connect.out_to_client("-->权限错误");
+        }
+
+        if(rmanager.Revoke(tokens[1],tokens[2],rauthority)){
+            System.out.println("成功收回"+tokens[1]+"表"+tokens[2]+"的"+tokens[3]+"权限");
+            Connect.out_to_client("-->"+"成功收回"+tokens[1]+"表"+tokens[2]+"的"+tokens[3]+"权限");
+        }
+        else {
+            System.out.println("收回错误");
+            Connect.out_to_client("-->收回错误");
+        }
+
+        return;
+    }
+
 }
 
 class Utils {
