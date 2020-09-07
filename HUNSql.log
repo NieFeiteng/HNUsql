@@ -1,0 +1,17 @@
+INFO 2020-09-07 10:56:44 Interpreter.parse_select() : 执行成功，用时 0.0 s，select * from student
+INFO 2020-09-07 10:56:44 Interpreter.parse_insert() : 插入成功，into student values (1080100001,'name1',99)
+INFO 2020-09-07 10:56:44 Interpreter.parse_insert() : 插入成功，into student values (1080100002,'name2',52.5)
+INFO 2020-09-07 10:56:44 Interpreter.parse_insert() : 插入成功，into student values (1080100003,'name3',98.5)
+INFO 2020-09-07 10:56:44 Interpreter.parse_insert() : 插入成功，into student values (1080100004,'name4',91.5)
+INFO 2020-09-07 10:56:44 Interpreter.parse_insert() : 插入成功，into student values (1080100005,'name5',72.5)
+INFO 2020-09-07 10:56:44 Interpreter.parse_insert() : 插入成功，into student values (1080100006,'name6',89.5)
+INFO 2020-09-07 10:56:44 Interpreter.parse_select() : 执行成功，用时 0.0 s，select * from student
+INFO 2020-09-07 10:56:44 Interpreter.parse_select() : 执行成功，用时 0.0 s，select * from student
+INFO 2020-09-07 10:56:44 QException.<init>() : 系统异常， Can't not find the attributeName in table student
+INFO 2020-09-07 10:56:44 Interpreter.parse_select() : 执行成功，用时 0.0 s，select * from student
+INFO 2020-09-07 10:56:44 Interpreter.parse_select() : 执行成功，用时 0.0 s，select * from student
+INFO 2020-09-07 10:56:44 Interpreter.parse_select() : 执行成功，用时 0.001 s，select * from student where score<90 and score>50
+INFO 2020-09-07 10:56:44 Interpreter.parse_select() : 执行成功，用时 0.0 s，select * from student where score<90 and score>50
+INFO 2020-09-07 10:56:44 Interpreter.parse_select() : 执行成功，用时 0.0 s，select * from student where score<90 and score>50
+INFO 2020-09-07 10:56:44 Interpreter.parse_select() : 执行成功，用时 0.0 s，select * from student
+INFO 2020-09-07 10:56:44 Interpreter.parse_sql_file() : 解析SQL文件成功，execfile test1.txt

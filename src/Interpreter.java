@@ -10,7 +10,11 @@ import RECORDMANAGER.RecordManager;
 import RECORDMANAGER.TableRow;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.Vector;
+import java.util.logging.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,7 +22,43 @@ import java.util.regex.Pattern;
 
 public class Interpreter {
 
-//    private static boolean nestLock = false; //not permit to use nesting sql file execution
+//----zirui----//
+
+    public static Logger logger = Logger.getLogger(String.valueOf(Interpreter.class));
+
+    static {
+        FileHandler fileHandler = null;
+        try {
+            fileHandler = new FileHandler("HUNSql.log");
+            fileHandler.setLevel(Level.INFO);
+            //fileHandler.setFormatter(new SimpleFormatter());
+            fileHandler.setFormatter(new Formatter() {
+                @Override
+                public String format(LogRecord record) {
+                    SimpleDateFormat logTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    Calendar cal = new GregorianCalendar();
+                    cal.setTimeInMillis(record.getMillis());
+                    return record.getLevel()
+                            + " "
+                            + logTime.format(cal.getTime())
+                            + " "
+                            + record.getSourceClassName().substring(
+                            record.getSourceClassName().lastIndexOf(".") + 1,
+                            record.getSourceClassName().length())
+                            + "."
+                            + record.getSourceMethodName()
+                            + "() : "
+                            + record.getMessage() + "\n";
+                }
+            });
+            logger.addHandler(fileHandler);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    //----zirui----//
+
+    //    private static boolean nestLock = false; //not permit to use nesting sql file execution
     private static int execFile = 0;
     public static boolean rtype;
     public static String rusername;
@@ -30,44 +70,44 @@ public class Interpreter {
         try {
             API.initial();
             boolean type;
-            while (true){
-            Connect.change_username(Connect.read_line_from_client());
-            Connect.change_password(Connect.read_line_from_client());
+            while (true) {
+                Connect.change_username(Connect.read_line_from_client());
+                Connect.change_password(Connect.read_line_from_client());
 
-            /******检查登录是否正确*******/
+                /******检查登录是否正确*******/
 
-            String username = Connect.get_username();
-            String password = Connect.get_password();
+                String username = Connect.get_username();
+                String password = Connect.get_password();
 
-            //查PASSWORD表
-            Vector<String> rattrNames = new Vector<>();
-            rattrNames.add("Type");
-            Vector<Condition> rconditions = new Vector<>();
-            Condition rconditionl1 = new Condition("Name", "=", username);
-            Condition rconditionl2 = new Condition("Password", "=", password);
-            rconditions.add(rconditionl1);
-            rconditions.add(rconditionl2);
-            Vector<TableRow> rret = API.select("PASSWORD", rattrNames, rconditions);
-            int rnum = rret.size();
-            if (rnum > 0) {
-                if (rret.get(0).get_attribute_value(0).equals("1")) {
-                    type = true;
+                //查PASSWORD表
+                Vector<String> rattrNames = new Vector<>();
+                rattrNames.add("Type");
+                Vector<Condition> rconditions = new Vector<>();
+                Condition rconditionl1 = new Condition("Name", "=", username);
+                Condition rconditionl2 = new Condition("Password", "=", password);
+                rconditions.add(rconditionl1);
+                rconditions.add(rconditionl2);
+                Vector<TableRow> rret = API.select("PASSWORD", rattrNames, rconditions);
+                int rnum = rret.size();
+                if (rnum > 0) {
+                    if (rret.get(0).get_attribute_value(0).equals("1")) {
+                        type = true;
+                    } else {
+                        type = false;
+                    }
+
+                    String result = "ok";
+                    Connect.out_to_client(result);
+                    System.out.println("Welcome to HNUsql~ " + Connect.get_username());
+                    Connect.out_to_client("Welcome to HNUsql~ " + Connect.get_username());
+                    break;
                 } else {
-                    type = false;
-                }
-
-                String result = "ok";
-                Connect.out_to_client(result);
-                System.out.println("Welcome to HNUsql~ " + Connect.get_username());
-                Connect.out_to_client("Welcome to HNUsql~ " + Connect.get_username());
-                break;
-            } else {
-                String result = "Wrong user name or password";
-                Connect.out_to_client(result);
+                    String result = "Wrong user name or password";
+                    Connect.out_to_client(result);
 
                 }
             }
-            interpret( Connect.get_sysbuf(),type,Connect.get_username(),Connect.get_username());
+            interpret(Connect.get_sysbuf(), type, Connect.get_username(), Connect.get_username());
 
         } catch (IOException e) {
             System.out.println("101 Run time error : IO exception occurs");
@@ -77,15 +117,14 @@ public class Interpreter {
 
     }
 
-    private static void interpret(BufferedReader reader,boolean type,String username,String password) throws Exception {
-        rtype=type;
-        rusername=username;
-        rpassword=password;
-        if(rtype){
-            rmanager=new DBManager(username, password);
-        }
-        else {
-            ruser=new DBUser(username,password);
+    private static void interpret(BufferedReader reader, boolean type, String username, String password) throws Exception {
+        rtype = type;
+        rusername = username;
+        rpassword = password;
+        if (rtype) {
+            rmanager = new DBManager(username, password);
+        } else {
+            ruser = new DBUser(username, password);
         }
 
         String restState = ""; //rest statement after ';' in last line
@@ -102,18 +141,18 @@ public class Interpreter {
             } else {
                 statement.append(restState); //add rest line
                 statement.append(" ");
-                if (execFile == 0){//不断读取命令行输入的SQL语句
+                if (execFile == 0) {//不断读取命令行输入的SQL语句
                     System.out.print("HNUsql-->");
                     Connect.out_to_client("HNUsql-->");
-                }                    
+                }
 //                System.out.print("-->");
                 while (true) {  //read whole statement until ';'
 
-                    if(execFile != 0) line = reader.readLine();  //改用connect中的接口从客户端读取数据
+                    if (execFile != 0) line = reader.readLine();  //改用connect中的接口从客户端读取数据
                     else line = Connect.read_line_from_client();//从客户端读取数据
 
                     if (line == null) { //read the file tail
-                        if (execFile != 0 ) reader.close();
+                        if (execFile != 0) reader.close();
                         return;
                     } else if (line.contains(";")) { //last line
                         index = line.indexOf(";");
@@ -123,7 +162,7 @@ public class Interpreter {
                     } else {
                         statement.append(line);
                         statement.append(" ");
-                        if (execFile == 0){
+                        if (execFile == 0) {
                             System.out.print("HNUsql-->");
                             Connect.out_to_client("HNUsql-->");
                         }
@@ -134,7 +173,7 @@ public class Interpreter {
 
             //after get the whole statement
             String result = statement.toString().trim().replaceAll("\\s+", " ");
-            String[] tokens = result.split(" ");    
+            String[] tokens = result.split(" ");
 
 //            Date date=new Date();
 //            System.out.print(result +" | " +date.toString() + " | ");
@@ -228,7 +267,7 @@ public class Interpreter {
     }
 
     private static void parse_create_table(String statement) throws Exception {
-        if(!rtype){
+        if (!rtype) {
             System.out.println("普通用户没有创建表的权利！");
             Connect.out_to_client("-->普通用户没有创建表的权利！");
             return;
@@ -338,7 +377,7 @@ public class Interpreter {
     }
 
     private static void parse_drop_table(String statement) throws Exception {
-        if(!rtype){
+        if (!rtype) {
             System.out.println("普通用户没有删除表的权利！");
             Connect.out_to_client("-->普通用户没有删除表的权利！");
             return;
@@ -408,7 +447,7 @@ public class Interpreter {
     }
 
     private static void parse_select(String statement) throws Exception {
-
+        try{
         //select ... from ... where ...
         String attrStr = Utils.substring(statement, "select ", " from");//取出各个部分的具体内容，如表名
         String tabStr = Utils.substring(statement, "from ", " where");
@@ -425,10 +464,10 @@ public class Interpreter {
             if (tabStr.equals("")) {  // select * from [];
                 tabStr = Utils.substring(statement, "from ", "");
 
-                if(!rtype){
-                    if(!ruser.Select_Authority(tabStr)){
-                        System.out.println("用户"+rusername+"没有select此表的权利！");
-                        Connect.out_to_client("-->"+"用户"+rusername+"没有select此表的权利！");
+                if (!rtype) {
+                    if (!ruser.Select_Authority(tabStr)) {
+                        System.out.println("用户" + rusername + "没有select此表的权利！");
+                        Connect.out_to_client("-->" + "用户" + rusername + "没有select此表的权利！");
 
                         return;
                     }
@@ -439,10 +478,10 @@ public class Interpreter {
                 Utils.print_rows(ret, tabStr);
             } else { //select * from [] where [];
 
-                if(!rtype){
-                    if(!ruser.Select_Authority(tabStr)){
-                        System.out.println("用户"+rusername+"没有select此表的权利！");
-                        Connect.out_to_client("-->"+"用户"+rusername+"没有select此表的权利！");
+                if (!rtype) {
+                    if (!ruser.Select_Authority(tabStr)) {
+                        System.out.println("用户" + rusername + "没有select此表的权利！");
+                        Connect.out_to_client("-->" + "用户" + rusername + "没有select此表的权利！");
 
                         return;
                     }
@@ -460,10 +499,10 @@ public class Interpreter {
             if (tabStr.equals("")) {  //select [attr] from [];
                 tabStr = Utils.substring(statement, "from ", "");
 
-                if(!rtype){
-                    if(!ruser.Select_Authority(tabStr)){
-                        System.out.println("用户"+rusername+"没有select此表的权利！");
-                        Connect.out_to_client("-->"+"用户"+rusername+"没有select此表的权利！");
+                if (!rtype) {
+                    if (!ruser.Select_Authority(tabStr)) {
+                        System.out.println("用户" + rusername + "没有select此表的权利！");
+                        Connect.out_to_client("-->" + "用户" + rusername + "没有select此表的权利！");
 
                         return;
                     }
@@ -474,10 +513,10 @@ public class Interpreter {
                 Utils.print_rows(ret, tabStr);
             } else { //select [attr] from [table] where
 
-                if(!rtype){
-                    if(!ruser.Select_Authority(tabStr)){
-                        System.out.println("用户"+rusername+"没有select此表的权利！");
-                        Connect.out_to_client("-->"+"用户"+rusername+"没有select此表的权利！");
+                if (!rtype) {
+                    if (!ruser.Select_Authority(tabStr)) {
+                        System.out.println("用户" + rusername + "没有select此表的权利！");
+                        Connect.out_to_client("-->" + "用户" + rusername + "没有select此表的权利！");
 
                         return;
                     }
@@ -493,10 +532,16 @@ public class Interpreter {
         }
         double usedTime = (endTime - startTime) / 1000.0;
         System.out.println("Finished in " + usedTime + " s");
-        Connect.out_to_client("Finished in " + usedTime + " s");
+            logger.info("执行成功，用时 "+ usedTime + " s，" + statement);
+            Connect.out_to_client("Finished in " + usedTime + " s");
+        }catch (Exception e){
+            logger.info("执行失败 " + statement);
+        }
+
     }
 
     private static void parse_insert(String statement) throws Exception {
+        try{
         statement = statement.replaceAll(" *\\( *", " (").replaceAll(" *\\) *", ") ");
         statement = statement.replaceAll(" *, *", ",");
         statement = statement.trim();
@@ -566,10 +611,10 @@ public class Interpreter {
             }
         }
 
-        if(!rtype){
-            if(!ruser.Add_Authority(tableName)){
-                System.out.println("用户"+rusername+"没有insert表"+tableName+"的权利！");
-                Connect.out_to_client("-->"+"用户"+rusername+"没有insert表"+tableName+"的权利！");
+        if (!rtype) {
+            if (!ruser.Add_Authority(tableName)) {
+                System.out.println("用户" + rusername + "没有insert表" + tableName + "的权利！");
+                Connect.out_to_client("-->" + "用户" + rusername + "没有insert表" + tableName + "的权利！");
 
                 return;
             }
@@ -578,9 +623,14 @@ public class Interpreter {
         API.insert_row(tableName, tableRow);
         System.out.println("-->Insert successfully");
         Connect.out_to_client("-->Insert successfully");
+            logger.info("插入成功，" + statement);
+        }catch (Exception e){
+            logger.info("执行失败，" + statement);
+        }
     }
 
     private static void parse_delete(String statement) throws Exception {
+        try{
         //delete from [tabName] where []
         int num;
         String tabStr = Utils.substring(statement, "from ", " where").trim();
@@ -592,10 +642,10 @@ public class Interpreter {
         if (tabStr.equals("")) {  //delete from ...
             tabStr = Utils.substring(statement, "from ", "").trim();
 
-            if(!rtype){
-                if(!ruser.Delete_Authority(tabStr)){
-                    System.out.println("用户"+rusername+"没有delete表"+tabStr+"的权利！");
-                    Connect.out_to_client("-->"+"用户"+rusername+"没有delete表"+tabStr+"的权利！");
+            if (!rtype) {
+                if (!ruser.Delete_Authority(tabStr)) {
+                    System.out.println("用户" + rusername + "没有delete表" + tabStr + "的权利！");
+                    Connect.out_to_client("-->" + "用户" + rusername + "没有delete表" + tabStr + "的权利！");
 
                     return;
                 }
@@ -608,10 +658,10 @@ public class Interpreter {
             Connect.out_to_client("Query ok! " + s + " row(s) are deleted");
         } else {  //delete from ... where ...
 
-            if(!rtype){
-                if(!ruser.Delete_Authority(tabStr)){
-                    System.out.println("用户"+rusername+"没有delete表"+tabStr+"的权利！");
-                    Connect.out_to_client("-->"+"用户"+rusername+"没有delete表"+tabStr+"的权利！");
+            if (!rtype) {
+                if (!ruser.Delete_Authority(tabStr)) {
+                    System.out.println("用户" + rusername + "没有delete表" + tabStr + "的权利！");
+                    Connect.out_to_client("-->" + "用户" + rusername + "没有delete表" + tabStr + "的权利！");
 
                     return;
                 }
@@ -626,19 +676,23 @@ public class Interpreter {
             tempstr = "Query ok! " + s + " row(s) are deleted";
             Connect.out_to_client(tempstr);
         }
+            logger.info("删除成功，" + statement);
+        }catch (Exception e){
+            logger.info("删除失败，" + statement);
+        }
     }
 
-    private static void parse_update(String statement)throws Exception{
+    private static void parse_update(String statement) throws Exception {
         //select ... from ... where ...
         //update table set att = value; att=value where ...
         String tabStr = Utils.substring(statement, "update ", " set");
         String conStr = Utils.substring(statement, "where ", "");
         String setStr = Utils.substring(statement, "set ", "where");//要更新的属性和值
 
-        if(!rtype){
-            if(!ruser.Update_Authority(tabStr)){
-                System.out.println("用户"+rusername+"没有update表"+tabStr+"的权利！");
-                Connect.out_to_client("-->"+"用户"+rusername+"没有update表"+tabStr+"的权利！");
+        if (!rtype) {
+            if (!ruser.Update_Authority(tabStr)) {
+                System.out.println("用户" + rusername + "没有update表" + tabStr + "的权利！");
+                Connect.out_to_client("-->" + "用户" + rusername + "没有update表" + tabStr + "的权利！");
 
                 return;
             }
@@ -651,7 +705,7 @@ public class Interpreter {
         if (tabStr.equals(""))
             throw new QException(0, 902, "Not specify the table name");
         if (conStr.equals("")) {  // select * from [];
-                                  //update table set att=value;
+            //update table set att=value;
             setStr = Utils.substring(statement, "set ", "");
             ret = API.select(tabStr, new Vector<>(), new Vector<>());
         } else { //select * from [] where [];
@@ -660,53 +714,54 @@ public class Interpreter {
             conditions = Utils.create_conditon(conSet);
             ret = API.select(tabStr, new Vector<>(), conditions);
         }
-        
-        setStr = setStr.toString().trim().replaceAll("\\s+", "");;
+
+        setStr = setStr.toString().trim().replaceAll("\\s+", "");
+        ;
         String[] token0 = setStr.split(";");
         int num_of_set_att = token0.length;
-        String [] tokens = new String [num_of_set_att*3];
-        if(setStr.contains("-=")){
-            for(int ii=0;ii<num_of_set_att;ii++){
-                tokens[ii]=Utils.substring(token0[ii], "", "-=");
-                tokens[ii+1] = "-=";
-                tokens[ii+2]=Utils.substring(token0[ii], "-=", "");
+        String[] tokens = new String[num_of_set_att * 3];
+        if (setStr.contains("-=")) {
+            for (int ii = 0; ii < num_of_set_att; ii++) {
+                tokens[ii] = Utils.substring(token0[ii], "", "-=");
+                tokens[ii + 1] = "-=";
+                tokens[ii + 2] = Utils.substring(token0[ii], "-=", "");
             }
-        }else if(setStr.contains("+=")){
-            for(int ii=0;ii<num_of_set_att;ii++){
-                tokens[ii]=Utils.substring(token0[ii], "", "\\+=");
-                tokens[ii+1] = "+=";
-                tokens[ii+2]=Utils.substring(token0[ii], "\\+=", "");
+        } else if (setStr.contains("+=")) {
+            for (int ii = 0; ii < num_of_set_att; ii++) {
+                tokens[ii] = Utils.substring(token0[ii], "", "\\+=");
+                tokens[ii + 1] = "+=";
+                tokens[ii + 2] = Utils.substring(token0[ii], "\\+=", "");
             }
-        }else{
-            for(int ii=0;ii<num_of_set_att;ii++){
-                tokens[ii]=Utils.substring(token0[ii], "", "=");
-                tokens[ii+1] = "=";
-                tokens[ii+2]=Utils.substring(token0[ii], "=", "");
+        } else {
+            for (int ii = 0; ii < num_of_set_att; ii++) {
+                tokens[ii] = Utils.substring(token0[ii], "", "=");
+                tokens[ii + 1] = "=";
+                tokens[ii + 2] = Utils.substring(token0[ii], "=", "");
             }
         }
 
 //       Connect.out_to_client("Token:" + tokens[0] + " " + tokens[1] + " "+ tokens[2]);
 
         int attrSize = ret.get(0).get_attribute_size();
-        
+
         Table tmpTable = CatalogManager.get_table(tabStr);//获得表
         String attrName = "";
-        Attribute tmpAttribute1;   
-        int isattright = 0; 
-        for(int k = 0 ; k < tokens.length;k+=3){
-            for(int j=0;j<attrSize;j++){
+        Attribute tmpAttribute1;
+        int isattright = 0;
+        for (int k = 0; k < tokens.length; k += 3) {
+            for (int j = 0; j < attrSize; j++) {
                 tmpAttribute1 = tmpTable.attributeVector.get(j);
                 attrName = tmpAttribute1.attributeName;//属性名  
-                if(attrName.equals(tokens[k])){//加上要更新的值
+                if (attrName.equals(tokens[k])) {//加上要更新的值
                     isattright = 1;
                     break;
-                }                  
+                }
             }
-            if(isattright == 0){
+            if (isattright == 0) {
                 Connect.out_to_client(tabStr + " " + attrName + " " + tokens[k]);
                 throw new QException(0, 907, "Can't not find the attributeName in table " + tabStr);
-            }   
-            isattright = 0;     
+            }
+            isattright = 0;
         }
         //delete from [tabName] where []
         Vector<Condition> conditions1;
@@ -718,46 +773,46 @@ public class Interpreter {
             conditions1 = Utils.create_conditon(conSet);
             API.delete_row(tabStr, conditions1);
         }
-            
-    
-        for(int l = 0;l<ret.size();l++){//insert into student values(1080100006,'name6',89.5);
+
+
+        for (int l = 0; l < ret.size(); l++) {//insert into student values(1080100006,'name6',89.5);
             TableRow row = ret.get(l);
-            String insertstate = "insert into " + tabStr + " values(";            
+            String insertstate = "insert into " + tabStr + " values(";
             attrName = "";
-            Attribute tmpAttribute;    
-            for(int j=0;j<attrSize;j++){
+            Attribute tmpAttribute;
+            for (int j = 0; j < attrSize; j++) {
                 tmpAttribute = tmpTable.attributeVector.get(j);
                 String tmpvalue = row.get_attribute_value(j);
                 attrName = tmpAttribute.attributeName;//属性名
-                
-                for(int k = 0 ; k < tokens.length;k+=3){
-                    if(attrName.equals(tokens[k])){//加上要更新的值
-                        
-                        if(tokens[k+1].equals("+=") ){
-                            if(tmpAttribute.type.get_type()== NumType.INT) tmpvalue = 
-                            String.valueOf(Integer.parseInt(tmpvalue) + Integer.parseInt(tokens[k+2]));
-                            else if(tmpAttribute.type.get_type()== NumType.FLOAT) tmpvalue = 
-                            String.valueOf(Float.parseFloat(tmpvalue) + Float.parseFloat(tokens[k+2]));
-                            else tmpvalue = tokens[k+2];
-                        }else if(tokens[k+1].equals("-=")){
-                            if(tmpAttribute.type.get_type()== NumType.INT) tmpvalue = 
-                            String.valueOf(Integer.parseInt(tmpvalue) - Integer.parseInt(tokens[k+2]));
-                            else if(tmpAttribute.type.get_type()== NumType.FLOAT) tmpvalue = 
-                            String.valueOf(Float.parseFloat(tmpvalue) - Float.parseFloat(tokens[k+2]));
-                            else tmpvalue = tokens[k+2];
-                        } else 
-                        tmpvalue = tokens[k+2] ;
+
+                for (int k = 0; k < tokens.length; k += 3) {
+                    if (attrName.equals(tokens[k])) {//加上要更新的值
+
+                        if (tokens[k + 1].equals("+=")) {
+                            if (tmpAttribute.type.get_type() == NumType.INT) tmpvalue =
+                                    String.valueOf(Integer.parseInt(tmpvalue) + Integer.parseInt(tokens[k + 2]));
+                            else if (tmpAttribute.type.get_type() == NumType.FLOAT) tmpvalue =
+                                    String.valueOf(Float.parseFloat(tmpvalue) + Float.parseFloat(tokens[k + 2]));
+                            else tmpvalue = tokens[k + 2];
+                        } else if (tokens[k + 1].equals("-=")) {
+                            if (tmpAttribute.type.get_type() == NumType.INT) tmpvalue =
+                                    String.valueOf(Integer.parseInt(tmpvalue) - Integer.parseInt(tokens[k + 2]));
+                            else if (tmpAttribute.type.get_type() == NumType.FLOAT) tmpvalue =
+                                    String.valueOf(Float.parseFloat(tmpvalue) - Float.parseFloat(tokens[k + 2]));
+                            else tmpvalue = tokens[k + 2];
+                        } else
+                            tmpvalue = tokens[k + 2];
                         break;
-                    }                  
+                    }
                 }
 
-                if(tmpAttribute.type.get_type()== NumType.CHAR)//CHAR,INT,FLOAT
+                if (tmpAttribute.type.get_type() == NumType.CHAR)//CHAR,INT,FLOAT
                 {
                     insertstate += "\'" + tmpvalue + "\'";
-                }else insertstate += tmpvalue ;  
-                if(j != attrSize - 1) insertstate += ",";
+                } else insertstate += tmpvalue;
+                if (j != attrSize - 1) insertstate += ",";
             }
-            insertstate +=")";
+            insertstate += ")";
             insertstate = insertstate.replaceAll(" *\\( *", " (").replaceAll(" *\\) *", ") ");
             insertstate = insertstate.replaceAll(" *, *", ",");
             insertstate = insertstate.trim();
@@ -792,7 +847,7 @@ public class Interpreter {
             String[] valueParas = insertstate.substring(startIndex + 1).split(","); //get attribute tokens
             TableRow tableRow = new TableRow();
 
-            for (int  i = 0; i < valueParas.length; i++) {
+            for (int i = 0; i < valueParas.length; i++) {
                 if (i == valueParas.length - 1)  //last attribute
                     valueParas[i] = valueParas[i].substring(0, valueParas[i].length() - 1);
                 if (valueParas[i].equals("")) //empty attribute
@@ -839,6 +894,7 @@ public class Interpreter {
 
 
     private static void parse_quit(String statement, BufferedReader reader) throws Exception {
+        try{
         String[] tokens = statement.split(" ");
         if (tokens.length != 1)
             throw new QException(0, 1001, "Extra parameters in quit");
@@ -849,9 +905,14 @@ public class Interpreter {
         Connect.out_to_client("Bye");
         Connect.close_server();//关闭
         System.exit(0);
+            logger.info("退出成功，" + statement);
+        }catch (Exception e){
+            logger.info("退出失败，" + statement);
+        }
     }
 
     private static void parse_sql_file(String statement) throws Exception {
+        try {
         execFile++;
         String[] tokens = statement.split(" ");
         if (tokens.length != 2)
@@ -863,7 +924,7 @@ public class Interpreter {
 //            if (nestLock)  //first enter in sql file execution
 //                throw new QException(0, 1102, "Can't use nested file execution");
 //            nestLock = true; //lock, avoid nested execution
-            interpret(fileReader,rtype,rusername,rpassword);
+            interpret(fileReader, rtype, rusername, rpassword);
         } catch (FileNotFoundException e) {
             throw new QException(1, 1103, "Can't find the file");
         } catch (IOException e) {
@@ -871,6 +932,10 @@ public class Interpreter {
         } finally {
             execFile--;
 //            nestLock = false; //unlock
+        }
+        logger.info("解析SQL文件成功，" + statement);
+    }catch(Exception e){
+        logger.info("解析SQL文件失败，" + statement);
         }
     }
 

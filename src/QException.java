@@ -11,6 +11,7 @@ public class QException extends Exception {
         this.type = (type >= 0 && type <= ex.length) ? type : 0;
         this.status = status;
         this.msg = msg;
+        Interpreter.logger.info("系统异常， " + msg);
         //String str = String.valueOf(type) + String.valueOf(status)+msg;
      //   Connect.out_to_client(str);
     }
